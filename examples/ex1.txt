@@ -1,0 +1,22 @@
+Games
+  Beneath a Steel Sky
+    cd
+      bass.iso
+    drives
+      c
+    dosbox.conf
+    Beneath a Steel Sky.bat
+
+  ...
+
+  Passport to Adventure 
+    drives
+      c
+    dosbox.conf
+    ...
+
+  Prince of Persia
+    drives
+      c
+Games2
+  blah
