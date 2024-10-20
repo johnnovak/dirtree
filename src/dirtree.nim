@@ -1,4 +1,5 @@
 import std/algorithm
+import std/cmdline
 import std/lenientops
 import std/options
 import std/strformat
@@ -21,8 +22,10 @@ type
   Node = ref NodeObj
 
   Layout = object
-    x: float
-    y: float
+    x:          float
+    y:          float
+    nameWidth:  float
+    nameHeight: float
 
   Config = object
     dpi:            float
@@ -153,14 +156,48 @@ proc debugPrint(node: Node, level: Natural = 0) =
 
 # }}}
 
+# {{{ getDpiScaleFactor()
+proc getDpiScaleFactor(dpi: float): float =
+  const DefaultDpi = 72.0
+  dpi / DefaultDpi
+
+# }}}
+# {{{ createImage()
+proc createImage(width, height: Natural,
+                 dpi: float): tuple[surface: ptr Surface, context:ptr Context] =
+  var
+    image = imageSurfaceCreate(FormatArgb32, width.int32, height.int32)
+    ctx = image.create()
+
+  let scale = getDpiScaleFactor(dpi)
+  ctx.scale(scale, scale)
+
+  (image, ctx)
+
+# }}}
 # {{{ doLayout()
 proc doLayout(node: Node, conf: Config) =
+  var (image, c) = createImage(width = 1000, height = 1000, dpi = conf.dpi)
+
+  const DefaultDpi = 72.0
+  let scale = conf.dpi / DefaultDpi
+  c.scale(scale, scale)
+
+  c.selectFontFace(conf.nameFontName, FontSlantNormal, FontWeightNormal)
+  c.setFontSize(conf.nameFontSize)
+
   var y = conf.nameFontSize
 
   proc walk(node: Node, level: Natural) =
     if node.parent != nil:
       node.layout.x = conf.imageHorizPad + (level-1) * conf.nameIndent
       node.layout.y = conf.imageVertPad + y
+
+      var te: TextExtents
+      c.textExtents(node.name.cstring, te.addr)
+
+      node.layout.nameWidth  = te.width
+      node.layout.nameHeight = conf.nameHeight
 
       if node.nodeType == ntSpacer: y += conf.spacerHeight
       else:                         y += conf.nameHeight
@@ -171,16 +208,39 @@ proc doLayout(node: Node, conf: Config) =
   walk(node, level=0)
 
 # }}}
+# {{{ calcImageSize()
+proc calcImageSize(node: Node, conf: Config): tuple[w, h: float] =
+  var
+    w = 0.0
+    h = 0.0
+
+  proc walk(node: Node) =
+    var nodeWidth = node.layout.nameWidth
+    if node.nodeType == ntDir:
+      nodeWidth += conf.iconHorizPad
+
+    w = max(w, node.layout.x + nodeWidth)
+    h = max(h, node.layout.y)
+
+    for n in node.children:
+      walk(n)
+
+  walk(node)
+
+  let scale = getDpiScaleFactor(conf.dpi)
+
+  ((w + conf.imageHorizPad*2) * scale,
+   (h + conf.imageVertPad*2)  * scale)
+
+# }}}
+
 # {{{ renderImage()
 proc renderImage(node: Node, conf: Config): ptr Surface =
-  var
-    image = imageSurfaceCreate(FORMAT_ARGB32,
-                               conf.imageWidth.int32, conf.imageHeight.int32)
-    c = image.create()
+  let imageSize = calcImageSize(node, conf);
 
-  const DefaultDpi = 72.0
-  let scale = conf.dpi / DefaultDpi
-  c.scale(scale, scale)
+  var (image, c) = createImage(width  = imageSize.w.Natural,
+                               height = imageSize.h.Natural,
+                               dpi    = conf.dpi)
 
   # comment out for transparent background
   if conf.imageBgColor.isSome:
@@ -194,6 +254,9 @@ proc renderImage(node: Node, conf: Config): ptr Surface =
   proc walk(node: Node, isLastNode: bool = false) =
     let nl = node.layout
 
+    func isFileOrDir(n: Node): bool =
+      n.nodeType in {ntDir, ntFile}
+
     if node.parent != nil:
       if node.nodeType == ntEllipses:
         c.moveTo(nl.x, nl.y - conf.nameFontSize / 2)
@@ -203,7 +266,7 @@ proc renderImage(node: Node, conf: Config): ptr Surface =
         c.selectFontFace(conf.iconFontName, FontSlantNormal, FontWeightNormal)
         c.setFontSize(conf.iconFontSize)
         c.setSourceRgba(conf.iconColor)
-        c.showText(conf.iconFolder)
+        c.showText(conf.iconFolder.cstring)
 
         c.moveTo(nl.x + conf.iconHorizPad, nl.y)
 
@@ -215,7 +278,7 @@ proc renderImage(node: Node, conf: Config): ptr Surface =
       c.setSourceRgba(conf.nameColor)
       c.showText(node.name.cstring)
 
-      if node.nodeType in {ntDir, ntFile} and
+      if node.isFileOrDir() and
          (node.parent != nil and node.parent.parent != nil):
 
         let
@@ -236,7 +299,7 @@ proc renderImage(node: Node, conf: Config): ptr Surface =
     var lastNodeFound = false
     for idx, n in node.children.reversed():
       let isLastNode = if lastNodeFound: false
-                       else: n.nodeType in {ntDir, ntFile}
+                       else: n.isFileOrDir()
       if isLastNode:
         lastNodeFound = true
 
@@ -249,14 +312,23 @@ proc renderImage(node: Node, conf: Config): ptr Surface =
 
 include "config1.nim"
 
+#############################################################################
+
+if paramCount() != 2:
+  echo "Usage: dirtree TREE_FILE PNG_FILE"
+  quit(1)
+
 let
-  contents = readFile("examples/ex1.txt")
+  treeFile  = paramStr(1)
+  imageFile = paramStr(2)
+
+  contents = readFile(treeFile)
   tree = parseTree(contents)
 
 #debugPrint(tree)
 doLayout(tree, conf)
 
 var image = renderImage(tree, conf)
-discard image.writeToPng("tree.png")
+discard image.writeToPng(imageFile)
 
 # vim: et:ts=2:sw=2:fdm=marker
