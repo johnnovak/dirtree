@@ -2,3 +2,5 @@
 *.swp
 *.exe
 *.png
+.DS_Store
+._*
