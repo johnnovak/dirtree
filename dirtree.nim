@@ -1,5 +1,6 @@
 import std/algorithm
 import std/lenientops
+import std/options
 import std/strformat
 import std/strutils
 
@@ -24,23 +25,26 @@ type
     y: float
 
   Config = object
-    scale:          float
+    dpi:            float
 
     imageWidth:     Natural
     imageHeight:    Natural
     imageHorizPad:  float
     imageVertPad:   float
+    imageBgColor:   Option[Color]
 
-    fontName:       string
-    fontSize:       float
+    nameFontName:   string
+    nameFontSize:   float
     nameIndent:     float
     nameHeight:     float
+    nameColor:      Color
 
     iconFontName:   string
     iconFontSize:   float
     iconHorizPad:   float
     iconVertOffs:   float
     iconFolder:     string
+    iconColor:      Color
 
     spacerHeight:   float
 
@@ -49,6 +53,25 @@ type
     lineVertOffs:   float
     lineHorizPad:   float
     lineVertPad:    float
+    lineColor:      Color
+
+  Color = object
+    r: float
+    g: float
+    b: float
+    a: float
+
+# }}}
+
+# {{{ Color helpers
+proc rgb(r, g, b: float): Color =
+  Color(r: r, g: g, b: b, a: 1.0)
+
+proc rgba(r, g, b, a: float): Color =
+  Color(r: r, g: g, b: b, a: a)
+
+proc setSourceRgba(c: ptr Context, color: Color) =
+    c.setSourceRgba(color.r, color.g, color.b, color.a)
 
 # }}}
 
@@ -79,7 +102,7 @@ proc parseTree(s: string): Node =
     lastNode: Node = nil
 
   try:
-    for (idx, line) in s.splitLines().pairs():
+    for idx, line in s.splitLines().pairs():
       currLine = idx + 1
 
       let name = line.strip
@@ -129,13 +152,13 @@ proc debugPrint(node: Node, level: Natural = 0) =
     debugPrint(n, level + 1)
 
 # }}}
+
 # {{{ doLayout()
 proc doLayout(node: Node, conf: Config) =
-  var y = conf.fontSize
+  var y = conf.nameFontSize
 
   proc walk(node: Node, level: Natural) =
     if node.parent != nil:
-      let s = if node.nodeType == ntSpacer: "*" else: ""
       node.layout.x = conf.imageHorizPad + (level-1) * conf.nameIndent
       node.layout.y = conf.imageVertPad + y
 
@@ -155,27 +178,31 @@ proc renderImage(node: Node, conf: Config): ptr Surface =
                                conf.imageWidth.int32, conf.imageHeight.int32)
     c = image.create()
 
-  c.scale(conf.scale, conf.scale)
+  const DefaultDpi = 72.0
+  let scale = conf.dpi / DefaultDpi
+  c.scale(scale, scale)
 
   # comment out for transparent background
-  c.setSourceRgb(1.00, 1.00, 1.00)
+  if conf.imageBgColor.isSome:
+    c.setSourceRgba(conf.imageBgColor.get)
+
   c.rectangle(0, 0, conf.imageWidth.float, conf.imageHeight.float)
   c.fill()
 
   c.setLineWidth(conf.lineWidth)
 
-  proc walk(node: Node) =
+  proc walk(node: Node, isLastNode: bool = false) =
     let nl = node.layout
 
     if node.parent != nil:
       if node.nodeType == ntEllipses:
-        c.moveTo(nl.x, nl.y - conf.fontSize / 2)
+        c.moveTo(nl.x, nl.y - conf.nameFontSize / 2)
 
       elif node.nodeType == ntDir:
         c.moveTo(nl.x, nl.y - conf.iconFontSize * conf.iconVertOffs)
         c.selectFontFace(conf.iconFontName, FontSlantNormal, FontWeightNormal)
         c.setFontSize(conf.iconFontSize)
-        c.setSourceRgb(1.00, 0.60, 0.00)
+        c.setSourceRgba(conf.iconColor)
         c.showText(conf.iconFolder)
 
         c.moveTo(nl.x + conf.iconHorizPad, nl.y)
@@ -183,9 +210,9 @@ proc renderImage(node: Node, conf: Config): ptr Surface =
       else:
         c.moveTo(nl.x, nl.y)
 
-      c.selectFontFace(conf.fontName, FontSlantNormal, FontWeightNormal)
-      c.setFontSize(conf.fontSize)
-      c.setSourceRgb(0.20, 0.20, 0.20)
+      c.selectFontFace(conf.nameFontName, FontSlantNormal, FontWeightNormal)
+      c.setFontSize(conf.nameFontSize)
+      c.setSourceRgba(conf.nameColor)
       c.showText(node.name.cstring)
 
       if node.nodeType in {ntDir, ntFile} and
@@ -194,54 +221,36 @@ proc renderImage(node: Node, conf: Config): ptr Surface =
         let
           pl = node.parent.layout
           x1 = nl.x - conf.lineHorizPad
-          y1 = nl.y - conf.fontSize * conf.lineVertOffs
+          y1 = nl.y - conf.nameFontSize * conf.lineVertOffs
           x2 = pl.x + conf.lineIndent
           y2 = pl.y + conf.lineVertPad
 
+        c.setSourceRgba(conf.lineColor)
         c.moveTo(x1, y1)
         c.lineTo(x2, y1)
-        c.lineTo(x2, y2)
-        c.setSourceRgb(0.70, 0.70, 0.70)
+        if isLastNode:
+          c.lineTo(x2, y2)
+
         c.stroke()
 
-    for n in node.children.reversed():
-      walk(n)
+    var lastNodeFound = false
+    for idx, n in node.children.reversed():
+      let isLastNode = if lastNodeFound: false
+                       else: n.nodeType in {ntDir, ntFile}
+      if isLastNode:
+        lastNodeFound = true
+
+      walk(n, isLastNode)
 
   walk(node)
   image
 
 # }}}
 
-let conf = Config(
-  scale:          450.0 / 72.0,
-
-  imageWidth:     2000,
-  imageHeight:    4000,
-  imageHorizPad:  10.0,
-  imageVertPad:   20.0,
-
-  fontSize:       12.3,
-  fontName:       "Open Sans",
-  nameIndent:     38.0,
-  nameHeight:     21.0,
-
-  iconFontName:   "Folder-Icons",
-  iconFontSize:   14.0,
-  iconHorizPad:   18.0,
-  iconVertOffs:   -0.08,
-  iconFolder:     "\ue930",
-
-  spacerHeight:   7.0,
-
-  lineWidth:      1.10,
-  lineIndent:     6.0,
-  lineVertOffs:   0.35,
-  lineHorizPad:   3.5,
-  lineVertPad:    4.0
-)
+include "config1.nim"
 
 let
-  contents = readFile("ex1.txt")
+  contents = readFile("examples/ex1.txt")
   tree = parseTree(contents)
 
 #debugPrint(tree)
