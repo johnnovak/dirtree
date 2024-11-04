@@ -1,6 +1,32 @@
 # dirtree
 
-Render directory trees as pretty pictures.
+Render directory trees as pretty pictures from plaintext descriptions.
+
+### Source file
+
+```
+DOS Games
+  Passport to Adventure
+    drives
+      c
+    dosbox.conf
+
+  Prince of Persia
+    drives
+      c
+    dosbox.conf
+```
+
+### Result
+
+<img src="https://github.com/user-attachments/assets/ef399db3-562c-4cde-8eee-9d9227f8bbb6" alt="Example directory tree output" width="350">
+
+## Usage
+
+1. Make sure the prerequisites are met
+2. Compile with `nim c src/dirtree`
+3. Run `dirtree input.txt output.png` (check out the [examples](examples))
+4. To change the visual style, edit `src/config1.nim` and then recompile. 
 
 
 ## Prerequisites
@@ -12,7 +38,8 @@ must be available for the program.
 
 #### Windows
 
-Download the DLL files from [here]([Cairo](https://www.cairographics.org/download/)) and put it in the program directory.
+Download the DLL files from [here]([Cairo](https://www.cairographics.org/download/))
+and put it in the program directory.
 
 #### macOS
 
@@ -46,7 +73,8 @@ in `nim.cfg` by uncomment the following:
 
 ### Installing the icon font
 
-Unpack the [fonts/Folder-Icons-v1.0.zip](fonts/Folder-Icons-v1.0.zip) ZIP file and install the `fonts/Folder-Icons.ttf` font at the OS level..
+Unpack the [fonts/Folder-Icons-v1.0.zip](fonts/Folder-Icons-v1.0.zip) ZIP file
+and install the `fonts/Folder-Icons.ttf` font at the OS level..
 
 
 ## Working with the icon font
