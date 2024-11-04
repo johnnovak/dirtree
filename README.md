@@ -33,6 +33,12 @@ DOS Games
 
 ### Cairo
 
+Install the Cairo bindings with [Nimble](https://github.com/nim-lang/nimble):
+
+```
+nimble install cairo
+```
+
 The [Cairo](https://www.cairographics.org/download/) dynamic-link libraries
 must be available for the program.
 
