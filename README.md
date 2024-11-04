@@ -44,8 +44,9 @@ must be available for the program.
 
 #### Windows
 
-Download the DLL files from [here]([Cairo](https://www.cairographics.org/download/))
-and put it in the program directory.
+Download the DLL files from [here](https://www.cairographics.org/download/)
+or [here](https://github.com/preshing/cairo-windows/releases) and put them
+in the program directory.
 
 #### macOS
 
