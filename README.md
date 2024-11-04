@@ -23,9 +23,9 @@ DOS Games
 
 ## Usage
 
-1. Make sure the [prerequisites](#prerequisites) are met
-2. Compile with `nim c src/dirtree`
-3. Run `dirtree input.txt output.png` (check out the [examples](examples))
+1. Make sure the [prerequisites](#prerequisites) are met.
+2. Compile with `nim c src/dirtree`.
+3. Run `dirtree input.txt output.png` (check out the [examples](examples)).
 4. To change the visual style, edit `src/config1.nim` and then recompile. 
 
 
