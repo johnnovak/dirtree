@@ -114,13 +114,13 @@ proc parseTree(s: string): Node =
         nodeType: if name.contains('.'): ntFile else: ntDir,
         children: @[]
       )
-      if name.len == 0:
-        node.nodeType = ntSpacer
-        currParent.children.add(node)
-        continue
 
       let level = getLevel(line)
-      if level == currLevel:
+
+      if name.len == 0:
+        node.nodeType = ntSpacer
+
+      elif level == currLevel:
         discard # no-op
 
       elif level == currLevel + 1:
@@ -138,7 +138,9 @@ proc parseTree(s: string): Node =
       currParent.children.add(node)
 
       lastNode  = node
-      currLevel = level
+
+      if node.nodeType != ntSpacer:
+        currLevel = level
 
   except CatchableError as e:
     echo fmt"ERROR: line {currLine}: {e.msg}"
