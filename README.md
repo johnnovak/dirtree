@@ -5,14 +5,16 @@ Render directory trees as pretty pictures.
 
 ## Prerequisites
 
+### Cairo
+
 The [Cairo](https://www.cairographics.org/download/) dynamic-link libraries
 must be available for the program.
 
-### Windows
+#### Windows
 
 Download the DLL files from [here]([Cairo](https://www.cairographics.org/download/)) and put it in the program directory.
 
-### macOS
+#### macOS
 
 Install the Cairo libraries via MacPorts or a similar package manager, then set
 `DYLD_LIBRARY_PATH` accordingly.
@@ -41,6 +43,28 @@ in `nim.cfg` by uncomment the following:
 --l:"-target arm64-apple-macos11"
 --t:"-target arm64-apple-macos11"
 ```
+
+### Installing the icon font
+
+Unpack the [fonts/Folder-Icons-v1.0.zip](fonts/Folder-Icons-v1.0.zip) ZIP file and install the `fonts/Folder-Icons.ttf` font at the OS level..
+
+
+## Working with the icon font
+
+Unpack the [fonts/Folder-Icons-v1.0.zip](fonts/Folder-Icons-v1.0.zip) ZIP file
+and open `demo.html` to see the list of available icon glyphs.
+
+The easiest way to edit the font is to use the
+[IcoMoon](https://icomoon.io/app/) webapp:
+
+1. Go to the [Projects](https://icomoon.io/app/#/projects) view.
+2. Click **Import Project**, then select the file `selection.json` from the
+   unpacked ZIP.
+3. This will show up as "Untitled Project"—rename that to something more
+   meaningful, then click **Load**.
+4. Do your edits, then click on **Generate Font** and **Download** in the
+   bottom menu bar when you're done.
+
 
 ## License
 
